@@ -1,0 +1,11 @@
+disaster,n,accuracy,macro_f1
+mexico-earthquake,5477,0.9881,0.3485
+palu-tsunami,5191,0.9214,0.4971
+hurricane-harvey,3667,0.7197,0.6006
+hurricane-michael,2384,0.6925,0.5515
+hurricane-matthew,2071,0.4848,0.3807
+santa-rosa-wildfire,1783,0.9703,0.5223
+socal-fire,1660,0.9572,0.4634
+hurricane-florence,1042,0.8964,0.466
+midwest-flooding,734,0.955,0.327
+guatemala-volcano,71,0.8732,0.2331

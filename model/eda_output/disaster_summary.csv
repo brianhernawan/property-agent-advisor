@@ -1,0 +1,11 @@
+disaster;disaster_type;scenes;no-damage;minor-damage;major-damage;destroyed;un-classified;total_buildings;destroyed_pct
+mexico-earthquake;earthquake;121;32066;110;18;2;75;32271;0.01
+palu-tsunami;tsunami;113;25455;1;571;4966;401;31394;15.82
+hurricane-harvey;flooding;319;11423;2663;8238;401;289;23014;1.74
+hurricane-michael;wind;343;14588;5207;1902;757;232;22686;3.34
+hurricane-matthew;wind;238;2515;6548;1945;2147;784;13939;15.4
+santa-rosa-wildfire;fire;226;9285;78;63;3471;53;12950;26.8
+socal-fire;fire;823;8638;83;51;1329;374;10475;12.69
+midwest-flooding;flooding;279;8128;149;119;75;285;8756;0.86
+hurricane-florence;flooding;319;4689;132;1245;54;326;6446;0.84
+guatemala-volcano;volcano;18;639;9;9;25;174;856;2.92

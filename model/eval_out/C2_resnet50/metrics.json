@@ -1,0 +1,19 @@
+{
+  "split": "test",
+  "n": 24080,
+  "accuracy": 0.8515365448504983,
+  "macro_f1": 0.7274049813204069,
+  "recall_no-damage": 0.908490832157969,
+  "recall_minor-damage": 0.5932354250111259,
+  "recall_major-damage": 0.6483050847457628,
+  "recall_destroyed": 0.8528225806451613,
+  "precision_no-damage": 0.9536302262229065,
+  "precision_minor-damage": 0.4687060478199719,
+  "precision_major-damage": 0.626193724420191,
+  "precision_destroyed": 0.7866108786610879,
+  "minor_predicted_as_major": 0.21806853582554517,
+  "major_predicted_as_minor": 0.17702448210922786,
+  "checkpoint": "checkpoints/C2_resnet50/best.pt",
+  "arch": "resnet50",
+  "best_epoch": 3
+}
