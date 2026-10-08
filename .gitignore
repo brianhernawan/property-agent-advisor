@@ -14,3 +14,4 @@ __pycache__/
 .ipynb_checkpoints/
 eda_output/sample_grid.png
 eda_output/disaster_type_sample_grid.png
+maps_input/

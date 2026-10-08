@@ -1,14 +1,17 @@
 # Property Due-Diligence & Investment Advisor — Building Damage CNN
 
-DSML Batch 42 final project (Brianca Hernawan). A CNN fine-tuned to classify
+DSML Batch 42 final project (dibimbing.id) by Brian Hernawan. A CNN fine-tuned to classify
 building damage severity (no-damage / minor / major / destroyed) from
 satellite imagery, as the condition-assessment component of a larger
 property due-diligence and investment advisor. Built on the
 [xBD dataset](https://arxiv.org/abs/1911.09296) (Gupta et al., 2019).
 
-**Status:** Checkpoint 1 (EDA) and Checkpoint 2 (CNN fine-tuning + MLflow
-tracking) are complete and in this repo. This README will be updated once
-the full final project (property scoring, maps, advisor agent) is finished.
+**Part of a two-repo project.** This repo trains and evaluates the damage
+classifier. The app that serves it (FastAPI + Streamlit UI + advisor chatbot)
+is in [`property-agent-advisor`](https://github.com/brianhernawan/property-agent-advisor).
+
+**Status:** EDA, CNN fine-tuning with MLflow tracking, and the test-set
+evaluation are complete and in this repo.
 
 ## Key results
 
@@ -49,10 +52,9 @@ run_pipeline.py            Orchestrates the whole pipeline end to end (wraps the
 RUNBOOK.md                 Step-by-step guide to running the pipeline manually
 results.md                 Full experiment log, metric glossary, and interpretation
 requirements.txt           Python dependencies
-mlflow.db                  MLflow tracking database (experiment property-dd-cnn, 11 runs)
+test_maps_imagery.py       Runs the model(s) on your own satellite screenshots and writes an HTML review gallery
 eda_output/                 Checkpoint 1 charts and summary CSV
 eval_out/C2_resnet50/       Test-set evaluation artifacts for the champion run
-docs/presentation.pdf       Final Checkpoint 2 presentation deck (added once exported from Canva)
 ```
 
 ## Getting started
@@ -79,9 +81,12 @@ or follow the manual, step-by-step version in [`RUNBOOK.md`](RUNBOOK.md).
 
 - [`RUNBOOK.md`](RUNBOOK.md) — exact commands, in order, with what to check between stages
 - [`results.md`](results.md) — the full 11-run experiment table, column/metric glossary, and the good/bad read on the numbers
-- `docs/presentation.pdf` — the Checkpoint 2 deck *(to add once finalized in Canva)*
 
-## TODO
+## Data and licence
 
-- [ ] Add the final presentation PDF under `docs/`
-- [ ] Final-project architecture updates (BPN maps, web-search LLM agent replacing the vector-DB/RAG design) — tracked separately, not part of this checkpoint
+Trained and evaluated on the [xBD dataset](https://xview2.org/) (Gupta et al.,
+2019), which is distributed under CC BY-NC-SA 4.0 (non-commercial, share-alike;
+check the terms on xview2.org before reuse). The dataset, the trained
+checkpoints and the MLflow database are not in this repo. Sample-grid images
+built from xBD are also kept out, and any Google Maps/Earth screenshots used
+for testing are never committed.
