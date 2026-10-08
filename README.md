@@ -2,7 +2,7 @@
 
 Photo in, ranked properties out, chatbot on top. Two containers: `api` (damage classifier) and `app` (Streamlit UI + chatbot). SQLite lives in `./storage`.
 
-DSML Batch 42 final project (dibimbing.id) by Brian Hernawan. The damage model is trained and evaluated in [`property-damage-model`](https://github.com/brianhernawan/property-damage-model) (xBD dataset, CC BY-NC-SA 4.0).
+DSML Batch 42 final project (dibimbing.id) by Brian Hernawan. The damage model is trained and evaluated in [`model/`](model/) in this same repo (xBD dataset, CC BY-NC-SA 4.0).
 
 ## What is in here
 
@@ -13,25 +13,24 @@ DSML Batch 42 final project (dibimbing.id) by Brian Hernawan. The damage model i
 | `models/serving.pt` | You add this: the ResNet-18 checkpoint (see step 1) |
 | `storage/advisor.db` | Created on first start |
 | `data/` | Build context: Dockerfile and all Python code |
-| `sync_from_root.sh` | Copies `inference.py` and `serve_api.py` from the project root into `data/` |
+| `model/` | Training, evaluation and Maps-test scripts for the damage CNN (see `model/README.md`) |
 
 ## Run it
 
-1. Copy the model: `mkdir -p models && cp ../checkpoints/C1_resnet18/best.pt models/serving.pt`
+1. Copy the model: `mkdir -p models && cp model/checkpoints/C1_resnet18/best.pt models/serving.pt`
    (Same weights the `serving` alias points to. The MLflow registry cannot be used inside the container because `mlflow.db` stores absolute paths from your Mac.)
 2. Keys: `cp .env.example .env`, then edit `.env`. Without `GOOGLE_API_KEY` the chat is off and everything else works.
 3. One-time networks: `docker network create frontend` and `docker network create backend` (skip any that exist).
-4. `./sync_from_root.sh`
-5. `docker compose up -d --build` (first build downloads PyTorch, a few minutes)
-6. Open http://localhost:8501. API docs: http://localhost:8000/docs
-7. Stop: `docker compose down`. The database stays in `./storage`.
+4. `docker compose up -d --build` (first build downloads PyTorch, a few minutes)
+5. Open http://localhost:8501. API docs: http://localhost:8000/docs
+6. Stop: `docker compose down`. The database stays in `./storage`.
 
 ## Without Docker (development)
 
 ```bash
 pip install -r data/requirements.txt torch torchvision
 cd data
-CHECKPOINT=../../checkpoints/C1_resnet18/best.pt uvicorn serve_api:app --port 8000 &
+CHECKPOINT=../model/checkpoints/C1_resnet18/best.pt uvicorn serve_api:app --port 8000 &
 API_URL=http://localhost:8000 DB_PATH=../storage/advisor.db streamlit run app.py
 ```
 

@@ -6,9 +6,9 @@ satellite imagery, as the condition-assessment component of a larger
 property due-diligence and investment advisor. Built on the
 [xBD dataset](https://arxiv.org/abs/1911.09296) (Gupta et al., 2019).
 
-**Part of a two-repo project.** This repo trains and evaluates the damage
-classifier. The app that serves it (FastAPI + Streamlit UI + advisor chatbot)
-is in [`property-agent-advisor`](https://github.com/brianhernawan/property-agent-advisor).
+**This folder is part of the `property-agent-advisor` repo.** It trains and evaluates the
+damage classifier. The app that serves it (FastAPI + Streamlit UI + advisor chatbot)
+is in the [repo root](../README.md). Run all commands below from this folder (`cd model`).
 
 **Status:** EDA, CNN fine-tuning with MLflow tracking, and the test-set
 evaluation are complete and in this repo.
