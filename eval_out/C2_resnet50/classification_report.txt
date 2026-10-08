@@ -1,0 +1,13 @@
+test split, n=24,080
+accuracy 0.8515   macro-F1 0.7274
+
+              precision    recall  f1-score   support
+
+   no-damage      0.954     0.908     0.931     17725
+minor-damage      0.469     0.593     0.524      2247
+major-damage      0.626     0.648     0.637      2124
+   destroyed      0.787     0.853     0.818      1984
+
+    accuracy                          0.852     24080
+   macro avg      0.709     0.751     0.727     24080
+weighted avg      0.866     0.852     0.857     24080

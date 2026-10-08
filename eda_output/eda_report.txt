@@ -1,0 +1,31 @@
+xBD Checkpoint 1 — Explore Dataset report
+==================================================
+Post-disaster images found : 2799
+Usable pre/post pairs      : 2799
+Missing pre-disaster image : 0
+Missing post label json    : 0
+Missing pre label json     : 0
+Corrupted/unreadable files : 0
+Distinct image sizes seen  : 1
+
+Class distribution (all buildings):
+  no-damage         117426  ( 72.1%)
+  minor-damage       14980  (  9.2%)
+  major-damage       14161  (  8.7%)
+  destroyed          13227  (  8.1%)
+  un-classified       2993  (  1.8%)
+
+By split:
+  train:
+    no-damage         117426
+    minor-damage       14980
+    major-damage       14161
+    destroyed          13227
+    un-classified       2993
+
+Insight -> preprocessing decision:
+  'no-damage' is 72.1% of labels vs 8.1% 'destroyed'.
+  -> Confirmed imbalance: plan class-weighted loss and oversample
+     'major-damage' / 'destroyed' during training (Checkpoint 2), not
+     just plain augmentation, or the model will default to predicting
+     'no-damage' and still look accurate.
