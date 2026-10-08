@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pillow
+numpy
+pandas
+requests
+streamlit
+langchain
+langchain-google-genai
+langchain-tavily
+ddgs

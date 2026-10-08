@@ -1,0 +1,67 @@
+---
+name: fp-advisor
+
+services:
+  api:
+    build:
+      context: ./data
+    image: kwf/fp-advisor:latest
+    container_name: fp-advisor-api
+    restart: unless-stopped
+    command: ["uvicorn", "serve_api:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      - TZ=Asia/Jakarta
+      - CHECKPOINT=/models/serving.pt
+      - DEVICE=cpu
+    volumes:
+      - ./models:/models:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    build:
+      context: ./data
+    image: kwf/fp-advisor:latest
+    container_name: fp-advisor-app
+    restart: unless-stopped
+    command: ["streamlit", "run", "app.py", "--server.port", "8501", "--server.address", "0.0.0.0", "--server.headless", "true"]
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Jakarta
+      - API_URL=http://api:8000
+      - DB_PATH=/storage/advisor.db
+    volumes:
+      - ./storage:/storage
+    ports:
+      - "8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  frontend:
+    external: true
+  backend:
+    external: true

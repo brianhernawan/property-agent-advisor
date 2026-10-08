@@ -1,0 +1,8 @@
+.env
+storage/
+models/
+__pycache__/
+*.bak
+*.bak2
+*.db
+inarisk_*.json
