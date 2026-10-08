@@ -2,6 +2,8 @@
 
 Photo in, ranked properties out, chatbot on top. Two containers: `api` (damage classifier) and `app` (Streamlit UI + chatbot). SQLite lives in `./storage`.
 
+DSML Batch 42 final project (dibimbing.id) by Brian Hernawan. The damage model is trained and evaluated in [`property-damage-model`](https://github.com/brianhernawan/property-damage-model) (xBD dataset, CC BY-NC-SA 4.0).
+
 ## What is in here
 
 | Path | Purpose |
@@ -45,5 +47,5 @@ API_URL=http://localhost:8000 DB_PATH=../storage/advisor.db streamlit run app.py
 ## Known limits
 
 - The classifier was trained on top-down satellite crops of buildings (xBD). Use satellite crops of one building, not street photos.
-- The ranking weights are design choices, shown in the app, not fitted.
+- The ranking weights (0.40 condition, 0.35 budget fit, 0.25 location) are design choices, shown in the app, not fitted. The BNPB InaRISK flood hazard index is shown per property but is not part of the score.
 - Chat answers depend on live web search results; the agent is told to cite URLs and never guess a price.
