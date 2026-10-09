@@ -51,7 +51,7 @@ The API exposes Prometheus metrics at `GET /metrics`. Prometheus scrapes it ever
 | `dd_rejected_total{reason}` | Uploads refused (too large, not an image) |
 | `http_requests_total`, `http_request_duration_seconds` | Traffic, status codes and latency per endpoint |
 
-Quick check: `curl -s http://127.0.0.1:8000/metrics | grep ^dd_`. Prometheus binds to `127.0.0.1:9090` only; Grafana is on port 3000 and needs a password.
+Quick check: `curl -s http://127.0.0.1:8000/metrics | grep ^dd_`. The API (8000) and Prometheus (9090) are open on the lab network and have no login: do not publish them through a public reverse proxy. Grafana (3000) needs a password.
 
 ## Without Docker (development)
 
