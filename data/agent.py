@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 agent.py -- the advisor chatbot: a LangChain tool-calling agent (Gemini 2.5 Flash)
-with three tools, replacing the earlier vector-DB/RAG plan (Rizky's Checkpoint 1 feedback).
+with four tools, replacing the earlier vector-DB/RAG plan (Rizky's Checkpoint 1 feedback).
 
     search_prices(query)         live web search for Indonesian property prices (Tavily, DuckDuckGo fallback)
     get_condition(property_id)   the CNN damage result stored in SQLite for one property
     get_flood_risk(property_id)  BNPB InaRISK flood-hazard index at the property's coordinates
+    find_similar(property_id)    content-based recommender: listings most like this one (TF-IDF + numbers)
 
 Keys come from the environment, never from code:
     GOOGLE_API_KEY   Gemini (Google AI Studio)
@@ -20,6 +21,7 @@ import os
 from langchain.agents import create_agent
 from langchain_core.tools import tool
 
+import content
 import db
 import floodrisk
 
@@ -39,6 +41,8 @@ Rules:
   comes from BNPB InaRISK. Do not invent a class such as low, medium or high, and do not say a property is safe.
   If the status is no_data, say the point is outside the mapped hazard area and that this is not proof of zero risk.
   If the property is a synthetic demo, say its coordinates are only the approximate district centre.
+- For "similar to" or "more like" questions, call find_similar with the property id and give the similarity and
+  shared keywords for each result. Do not name the tools in your answer.
 - Keep answers short and in English. End with one concrete next step.
 
 {shortlist}"""
@@ -65,7 +69,7 @@ def web_search(query: str, max_results: int = 5) -> list[dict]:
 
 
 def make_tools(conn):
-    """The three tools, bound to one database connection."""
+    """The four tools, bound to one database connection."""
 
     @tool
     def search_prices(query: str) -> str:
@@ -106,7 +110,19 @@ def make_tools(conn):
             out["location_note"] = "demo property: coordinates are the approximate district centre, not an address"
         return json.dumps(out)
 
-    return [search_prices, get_condition, get_flood_risk]
+    @tool
+    def find_similar(property_id: int) -> str:
+        """Find the listings most similar to one property (content-based: TF-IDF on the listing text plus
+        closeness on price, size and bedrooms). Returns up to 3 properties with similarity 0 to 1."""
+        sim = content.similar(conn, int(property_id), 3)
+        if sim.empty:
+            return json.dumps({"property_id": property_id, "status": "unknown property or nothing to compare"})
+        rows = [{"id": int(r.id), "title": r.title, "city": r.city, "district": r.district,
+                 "price_idr": int(r.price_idr), "similarity": round(float(r.similarity), 2),
+                 "shared_keywords": r.shared_terms} for r in sim.itertuples()]
+        return json.dumps({"property_id": property_id, "similar": rows})
+
+    return [search_prices, get_condition, get_flood_risk, find_similar]
 
 
 def shortlist_text(df) -> str:

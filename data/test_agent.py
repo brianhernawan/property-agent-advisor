@@ -47,7 +47,10 @@ db.save_prediction(conn, 1, {"label": "minor-damage", "confidence": 0.81, "p_dam
 tools = agent.make_tools(conn)
 
 # --- tools on their own ------------------------------------------------------------------
-search_tool, cond_tool, flood_tool = tools
+search_tool, cond_tool, flood_tool, similar_tool = tools
+sm = json.loads(similar_tool.invoke({"property_id": 3}))
+assert len(sm["similar"]) == 3 and all(0 <= r["similarity"] <= 1 for r in sm["similar"]) and 3 not in [r["id"] for r in sm["similar"]]
+assert json.loads(similar_tool.invoke({"property_id": 9999}))["status"].startswith("unknown")
 assert json.loads(cond_tool.invoke({"property_id": 1}))["label"] == "minor-damage"
 nc = json.loads(cond_tool.invoke({"property_id": 2}))
 assert nc["status"] == "not assessed" and "label" not in nc  # no made-up label for an unclassified property

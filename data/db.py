@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS properties (
     bedrooms      INTEGER,
     source        TEXT    NOT NULL,           -- where the row came from, e.g. 'synthetic_demo' or 'listing_csv'
     listing_url   TEXT,
+    description   TEXT,                       -- free-text listing description; used by the TF-IDF recommender
     latitude      REAL,                       -- WGS84 degrees; used for the flood-hazard lookup
     longitude     REAL,
     created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
@@ -73,7 +74,7 @@ JOIN (SELECT property_id, MAX(id) AS last_id FROM cnn_predictions GROUP BY prope
 """
 
 PROPERTY_COLS = ["title", "city", "district", "property_type", "price_idr", "land_m2", "building_m2",
-                 "bedrooms", "source", "listing_url", "latitude", "longitude"]
+                 "bedrooms", "source", "listing_url", "description", "latitude", "longitude"]
 
 
 def connect(path: str | Path) -> sqlite3.Connection:
@@ -83,11 +84,11 @@ def connect(path: str | Path) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA)
-    # databases created before the flood-risk tool have no coordinate columns: add them in place
+    # older databases lack columns added later (coordinates, description): add them in place
     have = {r[1] for r in conn.execute("PRAGMA table_info(properties)")}
-    for col in ("latitude", "longitude"):
+    for col, typ in (("latitude", "REAL"), ("longitude", "REAL"), ("description", "TEXT")):
         if col not in have:
-            conn.execute(f"ALTER TABLE properties ADD COLUMN {col} REAL")
+            conn.execute(f"ALTER TABLE properties ADD COLUMN {col} {typ}")
     conn.commit()
     return conn
 

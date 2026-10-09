@@ -26,6 +26,17 @@ DSML Batch 42 final project (dibimbing.id) by Brian Hernawan. The damage model i
 5. Open http://localhost:8501. API docs: http://localhost:8000/docs. Grafana: http://localhost:3000 (user `admin`, password from `.env`). Prometheus: http://localhost:9090
 6. Stop: `docker compose down`. The database stays in `./storage`.
 
+## Recommender
+
+Two recommenders work side by side (tab 2):
+
+1. **Weighted ranking** (`recommender.py`): `0.40 condition + 0.35 budget fit + 0.25 location`. Condition is `1 - p_damaged` from the CNN.
+2. **Content-based, TF-IDF** (`content.py`): each listing's description, type, city, district and bedroom count become one text profile, turned into a TF-IDF vector.
+   - *Similar properties*: cosine similarity between profiles, blended with closeness on price, land, building size and bedrooms (`0.6 text + 0.4 numbers`). The table shows the shared keywords behind each match.
+   - *Describe what you want*: the free text is matched against every profile; when given, the ranking becomes `0.35 condition + 0.30 budget + 0.20 location + 0.15 text match`.
+
+The chatbot can call the content-based recommender too (`find_similar`). All weights are design choices, not fitted values. TF-IDF needs listing text: the demo descriptions are synthetic, and real listings should carry a `description` column in the CSV.
+
 ## Monitoring
 
 The API exposes Prometheus metrics at `GET /metrics`. Prometheus scrapes it every 15 s and keeps 15 days. Grafana opens on the provisioned dashboard **Property Advisor: damage API**.
@@ -53,11 +64,11 @@ API_URL=http://localhost:8000 DB_PATH=../storage/advisor.db streamlit run app.py
 
 ## Tests
 
-`cd data && python3 test_core.py && python3 test_agent.py` (database, recommender, agent wiring; no API keys needed).
+`cd data && python3 test_core.py && python3 test_content.py && python3 test_agent.py` (database, both recommenders, agent wiring; no API keys needed).
 
 ## Data
 
-- The 10 properties shown at first start are SYNTHETIC. Load real listings: `python3 -c "import db; db.load_properties_csv(db.connect('../storage/advisor.db'), 'listings.csv')"` (required columns `title,city,price_idr`).
+- The 10 properties shown at first start are SYNTHETIC. Load real listings: `python3 -c "import db; db.load_properties_csv(db.connect('../storage/advisor.db'), 'listings.csv')"` (required columns `title,city,price_idr`; add `description` for the TF-IDF recommender).
 - The `rppi` table is empty until you load the Bank Indonesia RPPI CSV with `db.load_rppi_csv` (columns `city,year,quarter,house_type,index_value,yoy_growth_pct`). Nothing reads it yet.
 
 ## Known limits

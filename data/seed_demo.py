@@ -27,6 +27,30 @@ DEMO = [
     ("Demo shophouse J", "Jakarta", "Matraman", "shophouse", 3_200_000_000, 75, 150, 0),
 ]
 
+# Invented listing descriptions (SYNTHETIC, like everything above) so the TF-IDF recommender has text to work with.
+DESCRIPTION = {
+    "Demo house A": "Renovated family house in a quiet gated cluster, near schools and the toll road. "
+                    "Carport for one car, small garden, new kitchen, 24-hour security.",
+    "Demo house B": "Spacious two-storey family house close to Jatinegara station and the market. "
+                    "Carport for two cars, garden, near schools, ready to move in.",
+    "Demo townhouse C": "Compact townhouse in a gated cluster near the industrial estate and busway. "
+                        "Low maintenance, 24-hour security, suits young couples or rental investment.",
+    "Demo house D": "Affordable family house near the toll road and a shopping mall. "
+                    "Carport, small garden, near schools, quiet residential street.",
+    "Demo house E": "Family house in an established neighbourhood near the mall and commuter line station. "
+                    "Carport for two cars, garden, renovated bathrooms.",
+    "Demo house F": "Green suburban house with a large garden near a golf course and the toll road. "
+                    "Carport, quiet cluster, good air, suits families with children.",
+    "Demo townhouse G": "Budget townhouse near the university and the commuter line station. "
+                        "Low maintenance, gated cluster, strong rental demand from students.",
+    "Demo house H": "Family house with mountain views, cool climate, near the university campus. "
+                    "Carport, garden, quiet street, needs minor renovation.",
+    "Demo house I": "Large renovated family house near the city ring road, schools and a shopping mall. "
+                    "Carport for two cars, big garden, four bedrooms.",
+    "Demo shophouse J": "Three-storey shophouse on a busy main road near the busway and the market. "
+                        "Ground floor retail space, offices above, high foot traffic, no garden.",
+}
+
 # APPROXIMATE district centres (lat, lon), not the address of any property. The demo properties have no real address.
 DISTRICT_CENTRE = {
     "Duren Sawit": (-6.2300, 106.9100), "Jatinegara": (-6.2150, 106.8700), "Pulo Gadung": (-6.1850, 106.9100),
@@ -42,12 +66,17 @@ def seed(conn) -> int:
     if not existing:
         for t, city, dist, typ, price, land, bld, beds in DEMO:
             db.add_property(conn, title=t, city=city, district=dist, property_type=typ, price_idr=price,
-                            land_m2=land, building_m2=bld, bedrooms=beds, source="synthetic_demo")
+                            land_m2=land, building_m2=bld, bedrooms=beds, source="synthetic_demo",
+                            description=DESCRIPTION.get(t))
         added = len(DEMO)
     # fill coordinates on demo rows that lack them (also upgrades a database seeded before this column existed)
     for dist, (lat, lon) in DISTRICT_CENTRE.items():
         conn.execute("UPDATE properties SET latitude = ?, longitude = ? "
                      "WHERE source = 'synthetic_demo' AND district = ? AND latitude IS NULL", (lat, lon, dist))
+    # fill descriptions on demo rows that lack them (databases seeded before the TF-IDF recommender)
+    for title, text in DESCRIPTION.items():
+        conn.execute("UPDATE properties SET description = ? "
+                     "WHERE source = 'synthetic_demo' AND title = ? AND description IS NULL", (text, title))
     conn.commit()
     return added
 

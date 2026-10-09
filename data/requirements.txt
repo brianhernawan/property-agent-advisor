@@ -5,6 +5,7 @@ prometheus-client
 prometheus-fastapi-instrumentator
 pillow
 numpy
+scikit-learn
 pandas
 requests
 streamlit
