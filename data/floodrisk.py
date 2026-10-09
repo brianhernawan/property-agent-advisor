@@ -18,13 +18,16 @@ from __future__ import annotations
 
 import argparse
 import json
-from functools import lru_cache
 
 import requests
 
 URL = "https://gis.bnpb.go.id/server/rest/services/inarisk/layer_bahaya_banjir/ImageServer/identify"
 SOURCE = "BNPB InaRISK flood hazard layer"
 TIMEOUT_S = 15
+
+# Successful answers (ok / no_data) are cached for the life of the process. Errors are NOT cached,
+# so a temporary outage of the BNPB server does not stick: the next lookup simply tries again.
+_cache: dict = {}
 
 
 def _fetch(lat: float, lon: float) -> dict:
@@ -40,9 +43,25 @@ def _fetch(lat: float, lon: float) -> dict:
     return r.json()
 
 
-@lru_cache(maxsize=512)
 def flood_index(lat: float, lon: float) -> dict:
-    """Look up the InaRISK flood hazard index at (lat, lon), WGS84 degrees. Never raises."""
+    """Look up the InaRISK flood hazard index at (lat, lon), WGS84 degrees. Never raises.
+    ok and no_data results are cached; errors are retried on the next call."""
+    key = (round(lat, 6), round(lon, 6))
+    if key in _cache:
+        return _cache[key]
+    result = _lookup(lat, lon)
+    if result["status"] in ("ok", "no_data"):
+        _cache[key] = result
+    return result
+
+
+def clear_cache() -> None:
+    """Forget every cached answer (used by tests)."""
+    _cache.clear()
+
+
+def _lookup(lat: float, lon: float) -> dict:
+    """One uncached lookup, turned into a status dict."""
     if not (-12.0 <= lat <= 7.0 and 94.0 <= lon <= 142.0):
         return {"status": "error", "source": SOURCE, "note": "coordinates are outside Indonesia"}
     try:

@@ -40,9 +40,9 @@ def get_conn():
     return conn
 
 
-@st.cache_data(ttl=86400, show_spinner=False)
 def flood_cell(lat, lon) -> str:
-    """Raw InaRISK index for the table: a number, 'no data' or 'unavailable'. Cached for a day."""
+    """Raw InaRISK index for the table: a number, 'no data' or 'unavailable'.
+    floodrisk caches good answers; an 'unavailable' is retried on the next page load."""
     if pd.isna(lat) or pd.isna(lon):
         return "no coordinates"
     return floodrisk.short(floodrisk.flood_index(float(lat), float(lon)))

@@ -57,7 +57,7 @@ assert nc["status"] == "not assessed" and "label" not in nc  # no made-up label 
 
 import floodrisk
 floodrisk._fetch = lambda lat, lon: {"value": "0.703704"}
-floodrisk.flood_index.cache_clear()
+floodrisk.clear_cache()
 fr = json.loads(flood_tool.invoke({"property_id": 1}))
 assert fr["status"] == "ok" and fr["value"] == 0.704 and "location_note" in fr, fr
 assert json.loads(flood_tool.invoke({"property_id": 9999}))["status"] == "unknown property"
