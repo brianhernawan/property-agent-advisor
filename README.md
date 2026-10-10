@@ -4,6 +4,8 @@ Photo in, ranked properties out, chatbot on top. A CNN reads a top-down satellit
 
 DSML Batch 42 final project (dibimbing.id) by Brian Hernawan. Pilot scope: Greater Jakarta (the demo data also includes Bandung).
 
+Live demo: <https://property-agent.katawarna.id/>
+
 ## Contents
 
 1. [Results](#results)
@@ -17,7 +19,8 @@ DSML Batch 42 final project (dibimbing.id) by Brian Hernawan. Pilot scope: Great
 9. [Real-world check on Google Earth images](#real-world-check-on-google-earth-images)
 10. [Background: the xBD paper](#background-the-xbd-paper)
 11. [Tests](#tests)
-12. [Data, licence and limits](#data-licence-and-limits)
+12. [CI/CD](#cicd)
+13. [Data, licence and limits](#data-licence-and-limits)
 
 ## Results
 
@@ -212,6 +215,15 @@ The scores are not directly comparable: the paper's baseline also has to find th
 ## Tests
 
 `cd data && python3 test_core.py && python3 test_content.py && python3 test_agent.py && python3 test_floodrisk.py` (database, recommender incl. flood-aware ranking, agent wiring incl. the area flood tool, flood and place lookup; no API keys or network needed). The tests are excluded from the Docker image by `.dockerignore`.
+
+## CI/CD
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request to `main`:
+
+1. **Tests**: installs `data/requirements.txt` on Python 3.12 and runs the four test scripts above.
+2. **Build and publish image**: builds the app image from `data/Dockerfile` once the tests pass. On a push to `main` it is published to GitHub Container Registry as `ghcr.io/brianhernawan/property-agent-advisor` (tags `latest` and the commit SHA). Pull requests only build.
+
+The lab server is on a private network that GitHub's runners cannot reach, so the server is updated by hand: `git pull && docker compose up -d --build`.
 
 ## Data, licence and limits
 
