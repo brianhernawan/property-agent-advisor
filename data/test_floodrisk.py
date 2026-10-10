@@ -42,4 +42,18 @@ fr.clear_cache()
 assert fr.flood_index(-6.3, 106.9)["status"] == "error"
 state["down"] = False
 assert fr.flood_index(-6.3, 106.9)["value"] == 0.704
+# place lookup: geocode then flood index; not-found and geocoder errors never raise
+fr._fetch = lambda la, lo: {"value": "0.56"}
+fr._geocode_fetch = lambda place: [{"lat": "-6.185", "lon": "106.91", "display_name": "Pulo Gadung, Jakarta Timur"}]
+fr.clear_cache()
+p = fr.flood_for_place("Pulo Gadung, Jakarta")
+assert p["status"] == "ok" and p["value"] == 0.56 and p["resolved_to"].startswith("Pulo Gadung")
+fr._geocode_fetch = lambda place: []
+fr.clear_cache()
+assert fr.flood_for_place("Nowhere123")["status"] == "not_found"
+def boom(place): raise TimeoutError()
+fr._geocode_fetch = boom
+fr.clear_cache()
+assert fr.flood_for_place("Kelapa Gading")["status"] == "error"
+assert fr.geocode("   ")["status"] == "error"
 print("all floodrisk checks passed")

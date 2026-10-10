@@ -99,10 +99,12 @@ with tab2:
     top_n = c4.slider("Show top", 1, 10, 5)
     wish = st.text_input("Describe what you want (optional, content-based TF-IDF match)",
                          placeholder="e.g. quiet family house near schools with a garden and carport")
+    avoid_flood = st.checkbox("Avoid flood-prone areas (adds the BNPB flood index to the score)", value=False)
 
     if not props.empty:
         shortlist = rec.recommend(conn, budget, None if city == "(any)" else city,
-                                  None if district == "(any)" else district, top_n, query=wish)
+                                  None if district == "(any)" else district, top_n, query=wish,
+                                  flood_fn=floodrisk.flood_index if avoid_flood else None)
         shortlist["flood index"] = [flood_cell(la, lo) for la, lo in zip(shortlist["latitude"], shortlist["longitude"])]
         cols = ["id", "title", "city", "district", "price_idr", "condition_label", "flood index"]
         cols += (["text_part"] if wish.strip() else []) + ["score", "why"]
@@ -112,9 +114,11 @@ with tab2:
                      column_config={"price (IDR)": st.column_config.NumberColumn(format="IDR %d"),
                                     "text match": st.column_config.NumberColumn(format="%.2f"),
                                     "score": st.column_config.ProgressColumn(min_value=0.0, max_value=1.0, format="%.2f")})
-        st.caption("Flood index: raw BNPB InaRISK flood-hazard value (0 to 1) at the property's coordinates. "
-                   "It is shown for information and is NOT part of the score. 'no data' means outside the mapped area, "
-                   "not zero risk. Demo properties use the approximate district centre.")
+        st.caption("Flood index: raw BNPB InaRISK flood-hazard value (0 to 1) at the property's coordinates; higher = more "
+                   "flood-prone. " + (f"It counts for {rec.W_FLOOD:.0%} of the score (flood safety = 1 - index). "
+                   if avoid_flood else "Tick 'Avoid flood-prone areas' to add it to the score. ") +
+                   "'no data' means outside the mapped area, not zero risk, and is scored neutral. "
+                   "Demo properties use the approximate district centre.")
         with st.expander("How the score works"):
             st.markdown(
                 f"`score = {rec.W_CONDITION} x condition + {rec.W_BUDGET} x budget fit + {rec.W_LOCATION} x location`  \n"
@@ -124,7 +128,23 @@ with tab2:
                 f"With a description: `score = {rec.W_CONDITION_Q} x condition + {rec.W_BUDGET_Q} x budget fit + "
                 f"{rec.W_LOCATION_Q} x location + {rec.W_TEXT_Q} x text match`, where **text match** is the TF-IDF "
                 "cosine similarity between your words and each listing (best match = 1).  \n"
+                f"Avoid flood-prone areas: `score = {1 - rec.W_FLOOD:.2f} x score above + {rec.W_FLOOD} x flood safety`, "
+                f"where **flood safety** = 1 - BNPB flood index (no data = {rec.FLOOD_UNKNOWN}, neutral).  \n"
                 "These weights are design choices, not fitted values.")
+
+        st.subheader("Flood check for any area")
+        place = st.text_input("Area, district or address in Indonesia", placeholder="e.g. Kelapa Gading, Jakarta Utara",
+                              key="flood_place")
+        if place.strip():
+            res = floodrisk.flood_for_place(place)
+            if res["status"] == "ok":
+                st.metric(f"BNPB flood index · {place}", f"{res['value']:.2f}", help="0 to 1, higher = more flood-prone")
+                st.caption(f"Resolved to: {res['resolved_to']} ({res['lat']}, {res['lon']}). Value at that one point, "
+                           "not the whole area. Source: BNPB InaRISK flood-hazard layer.")
+            elif res["status"] == "no_data":
+                st.info(f"{place}: outside BNPB's mapped flood-hazard area. This is not proof of zero risk.")
+            else:
+                st.warning(f"{place}: {res.get('note', 'lookup failed')}")
 
         st.subheader("Similar properties (content-based)")
         base = st.selectbox("More like this property", props.to_dict("records"), format_func=property_label,

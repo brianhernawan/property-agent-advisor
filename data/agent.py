@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-agent.py -- the advisor chatbot: a LangChain tool-calling agent (Gemini) with four tools.
+agent.py -- the advisor chatbot: a LangChain tool-calling agent (Gemini) with five tools.
 Live web search replaces the original vector-DB/RAG plan, so prices are current instead of
 frozen in a document index.
 
@@ -8,6 +8,7 @@ frozen in a document index.
     get_condition(property_id)   the CNN damage result stored in SQLite for one property
     get_flood_risk(property_id)  BNPB InaRISK flood-hazard index at the property's coordinates
     find_similar(property_id)    content-based recommender: listings most like this one (TF-IDF + numbers)
+    flood_risk_for_area(place)   BNPB InaRISK flood-hazard index for any named area in Indonesia
 
 Keys come from the environment, never from code:
     GOOGLE_API_KEY   Gemini (Google AI Studio)
@@ -45,6 +46,11 @@ Rules:
   comes from BNPB InaRISK. Do not invent a class such as low, medium or high, and do not say a property is safe.
   If the status is no_data, say the point is outside the mapped hazard area and that this is not proof of zero risk.
   If the property is a synthetic demo, say its coordinates are only the approximate district centre.
+- For flood questions about an area, district or address rather than a listed property (for example
+  "Is Kelapa Gading flood-prone?" or "Compare Ciledug and Menteng"), call flood_risk_for_area once per place.
+  Report each raw index, the place it resolved to, and say it is the value at one point (the area's centre),
+  not a measure of the whole district. Same rules as above: no invented classes, no_data is not zero risk.
+  When comparing places, a higher index means a higher mapped flood hazard.
 - For "similar to" or "more like" questions, call find_similar with the property id and give the similarity and
   shared keywords for each result. Do not name the tools in your answer.
 - Keep answers short and in English. End with one concrete next step.
@@ -73,7 +79,7 @@ def web_search(query: str, max_results: int = 5) -> list[dict]:
 
 
 def make_tools(conn):
-    """The four tools, bound to one database connection."""
+    """The five tools, bound to one database connection."""
 
     @tool
     def search_prices(query: str) -> str:
@@ -126,7 +132,13 @@ def make_tools(conn):
                  "shared_keywords": r.shared_terms} for r in sim.itertuples()]
         return json.dumps({"property_id": property_id, "similar": rows})
 
-    return [search_prices, get_condition, get_flood_risk, find_similar]
+    @tool
+    def flood_risk_for_area(place: str) -> str:
+        """Get the BNPB InaRISK flood-hazard index (raw number from 0 to 1) for any area, district or address in
+        Indonesia, for example 'Kelapa Gading, Jakarta Utara' or 'Ciledug, Tangerang'. Include the city in the name."""
+        return json.dumps(floodrisk.flood_for_place(place))
+
+    return [search_prices, get_condition, get_flood_risk, find_similar, flood_risk_for_area]
 
 
 def shortlist_text(df) -> str:

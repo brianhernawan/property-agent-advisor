@@ -1,6 +1,6 @@
 # Property Due-Diligence & Investment Advisor
 
-Photo in, ranked properties out, chatbot on top. A CNN reads a top-down satellite crop of one building and estimates the chance it is damaged; a recommender ranks listings by condition, budget and location; an advisor chatbot answers price, condition and flood questions with sources.
+Photo in, ranked properties out, chatbot on top. A CNN reads a top-down satellite crop of one building and estimates the chance it is damaged; BNPB flood-hazard data shows whether a location is flood-prone; a recommender ranks listings by condition, budget, location and (optionally) flood safety; an advisor chatbot answers price, condition and flood questions with sources.
 
 DSML Batch 42 final project (dibimbing.id) by Brian Hernawan. Pilot scope: Greater Jakarta (the demo data also includes Bandung).
 
@@ -15,8 +15,9 @@ DSML Batch 42 final project (dibimbing.id) by Brian Hernawan. Pilot scope: Great
 7. [Train and evaluate the model](#train-and-evaluate-the-model)
 8. [Experiment log](#experiment-log)
 9. [Real-world check on Google Earth images](#real-world-check-on-google-earth-images)
-10. [Tests](#tests)
-11. [Data, licence and limits](#data-licence-and-limits)
+10. [Background: the xBD paper](#background-the-xbd-paper)
+11. [Tests](#tests)
+12. [Data, licence and limits](#data-licence-and-limits)
 
 ## Results
 
@@ -94,11 +95,15 @@ One recommender, two ways to use it (tab 2):
 - **Ranked shortlist** (`recommender.py`): `0.40 condition + 0.35 budget fit + 0.25 location`, where condition is `1 - p_damaged` from the CNN. Add a free-text wish and a TF-IDF text match joins the score: `0.35 condition + 0.30 budget + 0.20 location + 0.15 text match`.
 - **More like this** (`content.py`): content-based similarity. Each listing's description, type, city, district and bedrooms become a TF-IDF vector; similarity = `0.6 × TF-IDF cosine + 0.4 × closeness on price, land, building size and bedrooms`, with the shared keywords shown.
 
+**Avoid flood-prone areas** (checkbox): flood safety (`1 - BNPB flood index`) takes 25% of the score: `0.75 × score above + 0.25 × flood safety`. Points outside BNPB's mapped area are scored neutral (0.5), not safe.
+
+**Flood check for any area** (tab 2): type an area such as "Kelapa Gading, Jakarta Utara"; it is located with OpenStreetMap Nominatim and the BNPB index at that point is shown.
+
 All weights are design choices, not fitted values. The 10 demo listings and their descriptions are synthetic; load real listings with `db.load_properties_csv` (required columns `title,city,price_idr`, add `description` for TF-IDF).
 
 ## Advisor chatbot
 
-A LangChain tool-calling agent on Gemini (`GEMINI_MODEL`, default `gemini-3.5-flash-lite`) with four tools:
+A LangChain tool-calling agent on Gemini (`GEMINI_MODEL`, default `gemini-3.5-flash-lite`) with five tools:
 
 | Tool | What it does |
 |---|---|
@@ -106,8 +111,9 @@ A LangChain tool-calling agent on Gemini (`GEMINI_MODEL`, default `gemini-3.5-fl
 | `get_condition` | The latest CNN result stored for a property |
 | `get_flood_risk` | BNPB InaRISK flood-hazard index at the property's coordinates |
 | `find_similar` | The content-based recommender: listings most like a given property |
+| `flood_risk_for_area` | BNPB flood-hazard index for any named area in Indonesia (for example "Is Kelapa Gading flood-prone?") |
 
-Flood index: the raw value (0 to 1) of BNPB's InaRISK flood-hazard layer at that point. It is shown for information and is not part of the score. `no data` means the point is outside BNPB's mapped area, not zero risk. Demo properties use approximate district centres. Successful lookups are cached; failed lookups are retried on the next request.
+Flood index: the raw value (0 to 1) of BNPB's InaRISK flood-hazard layer ("Indeks Bahaya Banjir") at that point; higher means more flood-prone. BNPB computes the index from the likelihood and impact of flooding; this app only reads it, and no low/medium/high cut-offs are invented. It joins the ranking only when "Avoid flood-prone areas" is ticked. For named areas the value is read at the single point OpenStreetMap returns for that name, not averaged over the district. `no data` means the point is outside BNPB's mapped area, not zero risk. Demo properties use approximate district centres. Successful lookups are cached; failed lookups are retried on the next request.
 
 ## Train and evaluate the model
 
@@ -182,14 +188,36 @@ Result on 53 screenshots (Cianjur, Lombok, Semeru, Plumpang, Palu), damaged = `p
 
 The same images uploaded through the deployed app gave identical scores. Limits: crops under about 230 px are missed, and wide neighbourhood shots give confident wrong answers, so use one building per crop. Palu may overlap xBD's own training event. Screenshots are kept out of the repo (`maps_input/` is git-ignored).
 
+## Background: the xBD paper
+
+Gupta et al., "xBD: A Dataset for Assessing Building Damage from Satellite Imagery" (2019). [arXiv PDF](https://arxiv.org/pdf/1911.09296) · [CVPR Workshops version](https://openaccess.thecvf.com/content_CVPRW_2019/papers/cv4gc/Gupta_Creating_xBD_A_Dataset_for_Assessing_Building_Damage_from_Satellite_CVPRW_2019_paper.pdf)
+
+- **What it is:** the dataset behind the xView2 challenge: 850,736 building polygons over 45,361.79 km² of Maxar/DigitalGlobe Open Data imagery (below 0.8 m ground sample distance), 22,068 images from 19 natural disasters (hurricanes, floods and monsoons, wildfires, volcanic eruptions, tsunamis, earthquakes, tornadoes).
+- **How it was labelled:** building footprints were drawn on the pre-disaster image, overlaid on the post-disaster image, and each building was given a level on the Joint Damage Scale: no damage, minor damage, major damage, destroyed. The scale draws on FEMA's HAZUS, FEMA's damage assessment manual, the Kelman scale and EMS-98. Expert review found about 2–3% of labels wrong, and minor vs major damage is visually hard to separate.
+- **Their baseline:** an altered U-Net finds the buildings (IoU 0.66 on buildings), then a ResNet-50 plus a small CNN with an ordinal loss grades the damage: weighted F1 0.2654 overall; per class no-damage 0.663, minor 0.144, major 0.009, destroyed 0.466.
+
+How this project differs:
+
+| | xBD paper | This project |
+|---|---|---|
+| Goal | Disaster response: map damage across a whole area | Property due diligence: screen one listing before a site visit |
+| Input | Pre- and post-disaster image pair, full scene | One post-disaster crop of one building |
+| Building finding | Learned (U-Net localisation) | Given: xBD polygons for training, the user's crop in the app |
+| Classifier | ResNet-50 + small CNN, ordinal loss | Fine-tuned ResNet-18 / ResNet-50 / EfficientNet-B0, class-weighted loss, staged tuning |
+| Output used | 4-class label | 4-class label + `p_damaged` (damaged vs not) for the recommender |
+| Extra context | (none) | BNPB flood hazard, live prices, recommender, chatbot, monitoring |
+
+The scores are not directly comparable: the paper's baseline also has to find the buildings and was evaluated on its own split, while this project classifies given building crops on a scene-level split of the 2,799 scenes used here.
+
 ## Tests
 
-`cd data && python3 test_core.py && python3 test_content.py && python3 test_agent.py && python3 test_floodrisk.py` (database, both recommenders, agent wiring, flood lookup; no API keys needed). The tests are excluded from the Docker image by `.dockerignore`.
+`cd data && python3 test_core.py && python3 test_content.py && python3 test_agent.py && python3 test_floodrisk.py` (database, recommender incl. flood-aware ranking, agent wiring incl. the area flood tool, flood and place lookup; no API keys or network needed). The tests are excluded from the Docker image by `.dockerignore`.
 
 ## Data, licence and limits
 
 - **xBD** (Gupta et al., 2019, "xBD: A Dataset for Assessing Building Damage from Satellite Imagery", [arXiv:1911.09296](https://arxiv.org/abs/1911.09296)) is distributed under CC BY-NC-SA 4.0. The dataset, the trained checkpoints and the MLflow database are not redistributed in this repo.
 - **BNPB InaRISK** flood-hazard layer is queried live; nothing is stored beyond an in-memory cache.
+- **OpenStreetMap Nominatim** turns area names into coordinates (© OpenStreetMap contributors); one request per new place, cached.
 - **Google Earth** screenshots were used only for testing and are never committed.
 - The classifier was trained on top-down satellite crops of single buildings. Street photos and wide neighbourhood views are out of scope.
 - The 10 demo listings are synthetic. The ranking weights are design choices. Chat answers depend on live search results; the agent cites URLs and never guesses a price.

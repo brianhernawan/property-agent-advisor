@@ -14,6 +14,7 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain.agents import create_agent
 
 import agent
+import floodrisk
 import db
 import recommender as rec
 import seed_demo
@@ -47,7 +48,13 @@ db.save_prediction(conn, 1, {"label": "minor-damage", "confidence": 0.81, "p_dam
 tools = agent.make_tools(conn)
 
 # --- tools on their own ------------------------------------------------------------------
-search_tool, cond_tool, flood_tool, similar_tool = tools
+search_tool, cond_tool, flood_tool, similar_tool, area_tool = tools
+floodrisk._geocode_fetch = lambda place: [{"lat": "-6.16", "lon": "106.90", "display_name": "Kelapa Gading, Jakarta Utara"}]
+floodrisk._fetch = lambda la, lo: {"value": "0.81"}
+floodrisk.clear_cache()
+ar = json.loads(area_tool.invoke({"place": "Kelapa Gading, Jakarta"}))
+assert ar["status"] == "ok" and ar["value"] == 0.81 and "Kelapa Gading" in ar["resolved_to"] and "one point" in ar["note_point"]
+floodrisk.clear_cache()
 sm = json.loads(similar_tool.invoke({"property_id": 3}))
 assert len(sm["similar"]) == 3 and all(0 <= r["similarity"] <= 1 for r in sm["similar"]) and 3 not in [r["id"] for r in sm["similar"]]
 assert json.loads(similar_tool.invoke({"property_id": 9999}))["status"].startswith("unknown")
@@ -55,7 +62,6 @@ assert json.loads(cond_tool.invoke({"property_id": 1}))["label"] == "minor-damag
 nc = json.loads(cond_tool.invoke({"property_id": 2}))
 assert nc["status"] == "not assessed" and "label" not in nc  # no made-up label for an unclassified property
 
-import floodrisk
 floodrisk._fetch = lambda lat, lon: {"value": "0.703704"}
 floodrisk.clear_cache()
 fr = json.loads(flood_tool.invoke({"property_id": 1}))

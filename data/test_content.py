@@ -71,4 +71,18 @@ up = db.connect(old)
 seed_demo.seed(up)
 assert up.execute("SELECT description FROM properties WHERE title = 'Demo house A'").fetchone()[0]
 
+# --- avoid flood-prone areas: flood safety joins the score -----------------------------
+def fake_flood(lat, lon):
+    return {"status": "ok", "value": 0.9} if lon > 106.9 else {"status": "no_data"}
+f = rec.recommend(conn, 2_000_000_000, top_n=10, flood_fn=fake_flood)
+nf = rec.recommend(conn, 2_000_000_000, top_n=10)
+assert nf.flood_index.isna().all() and nf.flood_part.isna().all()
+wet = f[f.flood_index.notna()]
+dry = f[f.flood_index.isna() & f.latitude.notna()]
+assert len(wet) and len(dry)
+assert (abs(wet.flood_part - 0.1) < 1e-9).all() and (dry.flood_part == rec.FLOOD_UNKNOWN).all()
+row = wet.iloc[0]; base = nf.set_index("id").loc[row.id, "score"]
+assert abs(row.score - ((1 - rec.W_FLOOD) * base + rec.W_FLOOD * 0.1)) < 1e-9
+assert "flood index 0.90" in row.why and "no data" in dry.iloc[0].why
+
 print("all content checks passed")
