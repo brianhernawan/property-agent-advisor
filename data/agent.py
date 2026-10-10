@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-agent.py -- the advisor chatbot: a LangChain tool-calling agent (Gemini 2.5 Flash)
-with four tools, replacing the earlier vector-DB/RAG plan (Rizky's Checkpoint 1 feedback).
+agent.py -- the advisor chatbot: a LangChain tool-calling agent (Gemini) with four tools.
+Live web search replaces the original vector-DB/RAG plan, so prices are current instead of
+frozen in a document index.
 
     search_prices(query)         live web search for Indonesian property prices (Tavily, DuckDuckGo fallback)
     get_condition(property_id)   the CNN damage result stored in SQLite for one property
@@ -11,7 +12,7 @@ with four tools, replacing the earlier vector-DB/RAG plan (Rizky's Checkpoint 1 
 Keys come from the environment, never from code:
     GOOGLE_API_KEY   Gemini (Google AI Studio)
     TAVILY_API_KEY   Tavily search
-    GEMINI_MODEL     optional, default gemini-2.5-flash
+    GEMINI_MODEL     optional, default gemini-3.5-flash-lite
 """
 from __future__ import annotations
 
@@ -25,7 +26,7 @@ import content
 import db
 import floodrisk
 
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.5-flash-lite"
 
 SYSTEM_PROMPT = """You are a property due-diligence assistant for buyers in Indonesia.
 

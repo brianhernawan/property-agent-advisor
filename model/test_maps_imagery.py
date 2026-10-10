@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 test_maps_imagery.py -- sanity-check the damage CNN on real, UNLABELED Google Maps
-house crops (Rizky's Checkpoint 2 feedback).
+house crops, including normal houses, to check for false alarms.
 
 There is no ground truth here, so this script computes NO accuracy. It runs the
 crops through one or two models and builds a gallery you review by eye, with
@@ -11,7 +11,7 @@ predicted-damage crops first (those are the ones to check for false alarms).
         --model checkpoints/C2_resnet50/best.pt checkpoints/C1_resnet18/best.pt
 
     # or straight from the registry
-    python3 test_maps_imagery.py --images maps_crops --model models:/property-dd-damage-cnn@serving
+    python3 test_maps_imagery.py --images maps_crops --model models:/property-dd-damage-cnn@champion
 
 Outputs (in --out-dir, default maps_review/):
     predictions.csv        one row per image, per-model label / confidence / p_damaged

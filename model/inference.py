@@ -114,8 +114,8 @@ def predict_probs(model: nn.Module, batch: torch.Tensor, device: torch.device) -
 def summarise(probs: np.ndarray) -> dict:
     """One row of probabilities -> label, confidence, and the binary 'damaged' view.
 
-    p_damaged = 1 - P(no-damage). This is the number the recommender should use:
-    Rizky's priority is damaged vs normal, not the 4-way label.
+    p_damaged = 1 - P(no-damage). This is the number the recommender uses: for a buyer the
+    question that matters is damaged vs not damaged, not the exact 4-way label.
     """
     i = int(np.argmax(probs))
     p_damaged = float(1.0 - probs[0])

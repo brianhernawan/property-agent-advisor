@@ -17,8 +17,8 @@ Endpoints:
 
     curl -F "file=@house.jpg" http://localhost:8000/classify
 
-p_damaged = 1 - P(no-damage). `damaged` is p_damaged >= 0.5. This is the binary
-view Rizky said matters most; `label` is the 4-way argmax and can disagree with
+p_damaged = 1 - P(no-damage). `damaged` is p_damaged >= 0.5. This binary view
+is what matters most for a buyer; `label` is the 4-way argmax and can disagree with
 `damaged` when the probability is split between minor/major/destroyed.
 """
 from __future__ import annotations

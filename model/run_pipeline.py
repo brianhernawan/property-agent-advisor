@@ -2,7 +2,7 @@
 """
 run_pipeline.py  --  Checkpoint 2 pipeline, orchestrated as one script.
 
-This replaces typing the RUNBOOK.md commands into the terminal by hand. It
+This replaces typing the training steps from the README into the terminal by hand. It
 calls the existing project scripts (make_patches.py, train.py,
 register_best.py, evaluate.py) in the same order, with the same staged
 design: cheap experiments first on a data subset (Stage A, B), the expensive

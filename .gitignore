@@ -1,8 +1,32 @@
+# Secrets
 .env
+
+# App runtime state (created by Docker Compose)
 storage/
 models/
+
+# Model artefacts: checkpoints, MLflow, weights
+checkpoints/
+mlruns/
+*.db
+*.pt
+*.pth
+*.ckpt
+
+# Images that are not ours to redistribute
+maps_input/
+maps_review/
+model/eda_output/sample_grid.png
+model/eda_output/disaster_type_sample_grid.png
+
+# Python
 __pycache__/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Leftovers
 *.bak
 *.bak2
-*.db
 inarisk_*.json

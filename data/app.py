@@ -150,7 +150,7 @@ with tab3:
     st.header("3. Ask the advisor")
     st.caption(f"Gemini key: {'loaded' if os.getenv('GOOGLE_API_KEY') else 'MISSING'}  |  "
                f"Tavily key: {'loaded' if os.getenv('TAVILY_API_KEY') else 'missing (falls back to DuckDuckGo)'}  |  "
-               f"model: {os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')}")
+               f"model: {os.getenv('GEMINI_MODEL', agent.DEFAULT_MODEL)}")
     if not os.getenv("GOOGLE_API_KEY"):
         st.info("Chat is off: set GOOGLE_API_KEY (and TAVILY_API_KEY for live price search) in the .env file and restart.")
     else:
