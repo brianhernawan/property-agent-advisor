@@ -42,14 +42,15 @@ Rules:
   If the label says no-damage but p_damaged is 0.5 or higher, say the result is uncertain and lean on p_damaged.
   Say this is a screening signal from a satellite-image model, not a building inspection.
 - If get_condition says the property was not assessed, tell the user to classify a photo first. Do not guess.
-- For flood questions, call get_flood_risk with the property id. Report the raw index exactly as returned and say it
-  comes from BNPB InaRISK. Do not invent a class such as low, medium or high, and do not say a property is safe.
+- For flood questions, call get_flood_risk with the property id. Report the index and its hazard_class exactly as
+  returned (BNPB classes: low 0-0.333, medium 0.334-0.666, high 0.667-1) and say it comes from BNPB InaRISK.
+  Use only the class the tool returns, and do not say a property is safe.
   If the status is no_data, say the point is outside the mapped hazard area and that this is not proof of zero risk.
   If the property is a synthetic demo, say its coordinates are only the approximate district centre.
 - For flood questions about an area, district or address rather than a listed property (for example
   "Is Kelapa Gading flood-prone?" or "Compare Ciledug and Menteng"), call flood_risk_for_area once per place.
   Report each raw index, the place it resolved to, and say it is the value at one point (the area's centre),
-  not a measure of the whole district. Same rules as above: no invented classes, no_data is not zero risk.
+  not a measure of the whole district. Same rules as above: use the returned class, no_data is not zero risk.
   When comparing places, a higher index means a higher mapped flood hazard.
 - For "similar to" or "more like" questions, call find_similar with the property id and give the similarity and
   shared keywords for each result. Do not name the tools in your answer.
@@ -106,7 +107,7 @@ def make_tools(conn):
 
     @tool
     def get_flood_risk(property_id: int) -> str:
-        """Get the BNPB InaRISK flood-hazard index (a raw number from 0 to 1) at one property's coordinates.
+        """Get the BNPB InaRISK flood-hazard index (0 to 1) and BNPB hazard class at one property's coordinates.
         Use for flood questions. Returns status ok, no_data or error."""
         loc = db.get_location(conn, int(property_id))
         if loc is None:
@@ -134,7 +135,7 @@ def make_tools(conn):
 
     @tool
     def flood_risk_for_area(place: str) -> str:
-        """Get the BNPB InaRISK flood-hazard index (raw number from 0 to 1) for any area, district or address in
+        """Get the BNPB InaRISK flood-hazard index (0 to 1) and hazard class for any area, district or address in
         Indonesia, for example 'Kelapa Gading, Jakarta Utara' or 'Ciledug, Tangerang'. Include the city in the name."""
         return json.dumps(floodrisk.flood_for_place(place))
 

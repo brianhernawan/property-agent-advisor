@@ -14,7 +14,9 @@ def run(payload=None, exc=None, lat=-6.23, lon=106.91):
 
 
 r = run({"value": "0.703704"})
-assert r["status"] == "ok" and r["value"] == 0.704 and "class" not in r          # raw number, no invented class
+assert r["status"] == "ok" and r["value"] == 0.704 and r["hazard_class"] == "high (tinggi)"   # BNPB class
+assert fr.hazard_class(0.333) == "low (rendah)" and fr.hazard_class(0.334) == "medium (sedang)"
+assert fr.hazard_class(0.605) == "medium (sedang)" and fr.hazard_class(0.667) == "high (tinggi)"
 assert run({"value": "NoData"})["status"] == "no_data"                           # outside raster is not "zero risk"
 assert "not proof" in run({"value": "NoData"})["note"]
 assert run({"error": {"message": "bad"}})["status"] == "error"
@@ -56,4 +58,18 @@ fr._geocode_fetch = boom
 fr.clear_cache()
 assert fr.flood_for_place("Kelapa Gading")["status"] == "error"
 assert fr.geocode("   ")["status"] == "error"
+# reverse geocode: map click -> kelurahan / kecamatan / city, repeats removed; errors never raise
+fr._reverse_fetch = lambda la, lo: {"display_name": "Menteng, Jakarta Pusat, Indonesia",
+                                   "address": {"suburb": "Menteng", "city_district": "Menteng", "city": "Jakarta Pusat",
+                                               "state": "Daerah Khusus Ibukota Jakarta"}}
+fr.clear_cache()
+rv = fr.reverse_geocode(-6.195, 106.832)
+assert rv["status"] == "ok" and rv["area"] == "Menteng, Jakarta Pusat, Daerah Khusus Ibukota Jakarta"
+fr._reverse_fetch = lambda la, lo: {"error": "Unable to geocode"}
+fr.clear_cache()
+assert fr.reverse_geocode(0.0, 0.0)["status"] == "not_found"
+def boom_reverse(la, lo): raise TimeoutError()
+fr._reverse_fetch = boom_reverse
+fr.clear_cache()
+assert fr.reverse_geocode(-6.2, 106.8)["status"] == "error"
 print("all floodrisk checks passed")

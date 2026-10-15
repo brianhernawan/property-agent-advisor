@@ -12,15 +12,16 @@ Live demo: <https://property-agent.katawarna.id/>
 2. [How it fits together](#how-it-fits-together)
 3. [Run the app](#run-the-app)
 4. [Monitoring](#monitoring)
-5. [Recommender](#recommender)
-6. [Advisor chatbot](#advisor-chatbot)
-7. [Train and evaluate the model](#train-and-evaluate-the-model)
-8. [Experiment log](#experiment-log)
-9. [Real-world check on Google Earth images](#real-world-check-on-google-earth-images)
-10. [Background: the xBD paper](#background-the-xbd-paper)
-11. [Tests](#tests)
-12. [CI/CD](#cicd)
-13. [Data, licence and limits](#data-licence-and-limits)
+5. [Check a property](#check-a-property-top-of-the-page)
+6. [Recommender](#recommender)
+7. [Advisor chatbot](#advisor-chatbot)
+8. [Train and evaluate the model](#train-and-evaluate-the-model)
+9. [Experiment log](#experiment-log)
+10. [Real-world check on Google Earth images](#real-world-check-on-google-earth-images)
+11. [Background: the xBD paper](#background-the-xbd-paper)
+12. [Tests](#tests)
+13. [CI/CD](#cicd)
+14. [Data, licence and limits](#data-licence-and-limits)
 
 ## Results
 
@@ -59,7 +60,7 @@ Live demo: <https://property-agent.katawarna.id/>
 
 | Service | Address | Notes |
 |---|---|---|
-| Streamlit app | http://localhost:8501 | Classify, rank, ask the advisor |
+| Streamlit app | http://localhost:8501 | One page: check a property (map + photo), rank, ask the advisor |
 | FastAPI | http://localhost:8000/docs | `POST /classify`, `GET /health`, `/metrics` |
 | Prometheus | http://localhost:9090 | No login: keep it on the lab network |
 | Grafana | http://localhost:3000 | User `admin`, password from `.env` |
@@ -91,16 +92,22 @@ The API exposes Prometheus metrics at `GET /metrics`. Prometheus scrapes it ever
 
 Quick check: `curl -s http://127.0.0.1:8000/metrics | grep ^dd_`. The API (8000) and Prometheus (9090) have no login: do not publish them through a public reverse proxy.
 
+## Check a property (top of the page)
+
+The first thing on the page answers the two main questions in one step: is the building damaged, and is the area flood-prone?
+
+1. **Find the house:** click it on the map (satellite or street view), search an address, or pick a listed property. The pin gives latitude and longitude; OpenStreetMap reverse geocoding names the kelurahan, kecamatan and city.
+2. **Upload a top-down photo** of that one building (for example a satellite screenshot). Optional: without it, only location and flood are checked.
+3. **Check this property:** one button sends the photo to the CNN API and the pin to BNPB InaRISK, then shows photo | location | damage (chance of damage, label) | flood (index, BNPB class and a warning) side by side. If a listed property was picked, the damage result is saved to it and feeds the ranking below.
+
 ## Recommender
 
-One recommender, two ways to use it (tab 2):
+One recommender, two ways to use it (section 2 of the page):
 
 - **Ranked shortlist** (`recommender.py`): `0.40 condition + 0.35 budget fit + 0.25 location`, where condition is `1 - p_damaged` from the CNN. Add a free-text wish and a TF-IDF text match joins the score: `0.35 condition + 0.30 budget + 0.20 location + 0.15 text match`.
 - **More like this** (`content.py`): content-based similarity. Each listing's description, type, city, district and bedrooms become a TF-IDF vector; similarity = `0.6 × TF-IDF cosine + 0.4 × closeness on price, land, building size and bedrooms`, with the shared keywords shown.
 
 **Avoid flood-prone areas** (checkbox): flood safety (`1 - BNPB flood index`) takes 25% of the score: `0.75 × score above + 0.25 × flood safety`. Points outside BNPB's mapped area are scored neutral (0.5), not safe.
-
-**Flood check for any area** (tab 2): type an area such as "Kelapa Gading, Jakarta Utara"; it is located with OpenStreetMap Nominatim and the BNPB index at that point is shown.
 
 All weights are design choices, not fitted values. The 10 demo listings and their descriptions are synthetic; load real listings with `db.load_properties_csv` (required columns `title,city,price_idr`, add `description` for TF-IDF).
 
@@ -112,11 +119,11 @@ A LangChain tool-calling agent on Gemini (`GEMINI_MODEL`, default `gemini-3.5-fl
 |---|---|
 | `search_prices` | Live web search for Indonesian property prices (Tavily, DuckDuckGo fallback); every price is cited with its URL; sale and rent are kept apart |
 | `get_condition` | The latest CNN result stored for a property |
-| `get_flood_risk` | BNPB InaRISK flood-hazard index at the property's coordinates |
+| `get_flood_risk` | BNPB InaRISK flood-hazard index and class at the property's coordinates |
 | `find_similar` | The content-based recommender: listings most like a given property |
 | `flood_risk_for_area` | BNPB flood-hazard index for any named area in Indonesia (for example "Is Kelapa Gading flood-prone?") |
 
-Flood index: the raw value (0 to 1) of BNPB's InaRISK flood-hazard layer ("Indeks Bahaya Banjir") at that point; higher means more flood-prone. BNPB computes the index from the likelihood and impact of flooding; this app only reads it, and no low/medium/high cut-offs are invented. It joins the ranking only when "Avoid flood-prone areas" is ticked. For named areas the value is read at the single point OpenStreetMap returns for that name, not averaged over the district. `no data` means the point is outside BNPB's mapped area, not zero risk. Demo properties use approximate district centres. Successful lookups are cached; failed lookups are retried on the next request.
+Flood index: the value (0 to 1) of BNPB's InaRISK flood-hazard layer ("Indeks Bahaya Banjir") at that point; higher means more flood-prone. BNPB computes the index from the likelihood and impact of flooding; this app only reads it. The layer is a raster (a grid of values, not a table): the app sends the coordinate to the layer's public ArcGIS `identify` endpoint and reads the pixel value, no API key needed. Classes follow the BNPB risk-assessment method used in BPBD Kajian Risiko Bencana documents: low (rendah) 0-0.333, medium (sedang) 0.334-0.666, high (tinggi) 0.667-1. It joins the ranking only when "Avoid flood-prone areas" is ticked. For named areas the value is read at the single point OpenStreetMap returns for that name, not averaged over the district. `no data` means the point is outside BNPB's mapped area, not zero risk. Demo properties use approximate district centres. Successful lookups are cached; failed lookups are retried on the next request.
 
 ## Train and evaluate the model
 

@@ -5,19 +5,22 @@ floodrisk.py -- flood-hazard lookup for one coordinate from BNPB InaRISK (public
     python3 floodrisk.py --lat -6.23 --lon 106.91
     python3 floodrisk.py --place "Kelapa Gading, Jakarta"
 
-Returns the RAW hazard index the service gives for that point (a number between 0 and 1) and nothing
-else. No class names (low / medium / high) are invented here: the official class thresholds for this
-layer were not verified, so the app shows the number and says where it comes from.
+Returns the hazard index the service gives for that point (a number between 0 and 1) plus its BNPB
+hazard class, using the three classes of the BNPB risk-assessment method (as used in BPBD Kajian
+Risiko Bencana documents): low (rendah) 0-0.333, medium (sedang) 0.334-0.666, high (tinggi) 0.667-1.
 
-    status "ok"       value is the index at that point
+    status "ok"       value is the index at that point, hazard_class its class
     status "no_data"  the point is outside the mapped hazard raster. This is NOT proof of zero risk.
     status "error"    the service could not be reached or returned something unexpected
 
-Source layer: https://gis.bnpb.go.id/server/rest/services/inarisk/layer_bahaya_banjir/ImageServer
+The layer is a raster (a grid of hazard values), not a table: the identify call returns the value of the
+pixel under the coordinate. Source layer:
+https://gis.bnpb.go.id/server/rest/services/inarisk/layer_bahaya_banjir/ImageServer
 
 flood_for_place() first turns a place name into coordinates with OpenStreetMap Nominatim
 (one request per new place, cached), then reads the index at that point. The value describes
-that one point (usually the area's centre), not the whole district.
+that one point (usually the area's centre), not the whole district. reverse_geocode() does the
+opposite: coordinates (e.g. a map click) -> kelurahan / kecamatan / city name.
 """
 from __future__ import annotations
 
@@ -28,9 +31,22 @@ import requests
 
 URL = "https://gis.bnpb.go.id/server/rest/services/inarisk/layer_bahaya_banjir/ImageServer/identify"
 GEOCODE_URL = "https://nominatim.openstreetmap.org/search"
+REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
 GEOCODE_HEADERS = {"User-Agent": "property-agent-advisor/1.0 (github.com/brianhernawan/property-agent-advisor)"}
 SOURCE = "BNPB InaRISK flood hazard layer"
 TIMEOUT_S = 15
+
+# BNPB hazard-index classes (upper bound inclusive): rendah 0-0.333, sedang 0.334-0.666, tinggi 0.667-1
+CLASSES = [(0.333, "low", "rendah"), (0.666, "medium", "sedang"), (1.0, "high", "tinggi")]
+CLASS_SOURCE = "BNPB hazard classes: low (rendah) 0-0.333, medium (sedang) 0.334-0.666, high (tinggi) 0.667-1"
+
+
+def hazard_class(value: float) -> str:
+    """BNPB class of a hazard index, e.g. 'medium (sedang)'."""
+    for upper, en, idn in CLASSES:
+        if value <= upper:
+            return f"{en} ({idn})"
+    return "high (tinggi)"
 
 # Successful answers (ok / no_data) are cached for the life of the process. Errors are NOT cached,
 # so a temporary outage of the BNPB server does not stick: the next lookup simply tries again.
@@ -66,6 +82,7 @@ def clear_cache() -> None:
     """Forget every cached answer (used by tests)."""
     _cache.clear()
     _places.clear()
+    _reverse.clear()
 
 
 def _lookup(lat: float, lon: float) -> dict:
@@ -88,7 +105,8 @@ def _lookup(lat: float, lon: float) -> dict:
         value = round(float(raw), 3)
     except ValueError:
         return {"status": "error", "source": SOURCE, "note": f"unexpected value: {raw!r}"}
-    return {"status": "ok", "value": value, "scale": "0 to 1 (raw index from the service)", "source": SOURCE}
+    return {"status": "ok", "value": value, "hazard_class": hazard_class(value), "scale": "0 to 1 (index from the service)",
+            "classes": CLASS_SOURCE, "source": SOURCE}
 
 
 _places: dict = {}
@@ -129,6 +147,48 @@ def flood_for_place(place: str) -> dict:
     res = flood_index(loc["lat"], loc["lon"])
     return {"place": place, "resolved_to": loc["name"], "lat": round(loc["lat"], 5), "lon": round(loc["lon"], 5), **res,
             "note_point": "value at one point (the place's centre as found by OpenStreetMap), not the whole area"}
+
+
+_reverse: dict = {}
+AREA_KEYS = [("village", "suburb", "quarter", "neighbourhood"),       # kelurahan / desa
+             ("city_district", "district", "municipality"),          # kecamatan
+             ("city", "town", "regency", "county"),                  # kota / kabupaten
+             ("state",)]
+
+
+def _reverse_fetch(lat: float, lon: float) -> dict:
+    """One Nominatim reverse call. Separate function so tests can replace it."""
+    params = {"lat": lat, "lon": lon, "format": "json", "zoom": 16, "addressdetails": 1}
+    r = requests.get(REVERSE_URL, params=params, headers=GEOCODE_HEADERS, timeout=TIMEOUT_S)
+    r.raise_for_status()
+    return r.json()
+
+
+def area_label(address: dict) -> str:
+    """Nominatim address parts -> 'Menteng, Menteng, Jakarta Pusat, Daerah Khusus Ibukota Jakarta' with repeats removed."""
+    parts = []
+    for keys in AREA_KEYS:
+        val = next((address[k] for k in keys if address.get(k)), None)
+        if val and val not in parts:
+            parts.append(val)
+    return ", ".join(parts)
+
+
+def reverse_geocode(lat: float, lon: float) -> dict:
+    """Coordinates -> {status, area, name}. area is the short kelurahan / kecamatan / city label. Never raises."""
+    key = (round(lat, 5), round(lon, 5))
+    if key in _reverse:
+        return _reverse[key]
+    try:
+        data = _reverse_fetch(lat, lon)
+    except Exception as e:
+        return {"status": "error", "note": f"geocoder unreachable: {type(e).__name__}"}
+    if not data or "error" in data:
+        return {"status": "not_found", "note": "no address found at this point"}
+    out = {"status": "ok", "area": area_label(data.get("address", {})) or data.get("display_name", ""),
+           "name": data.get("display_name", "")}
+    _reverse[key] = out
+    return out
 
 
 def short(result: dict) -> str:

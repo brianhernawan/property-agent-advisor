@@ -13,3 +13,5 @@ langchain
 langchain-google-genai
 langchain-tavily
 ddgs
+folium
+streamlit-folium
