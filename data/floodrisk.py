@@ -151,7 +151,7 @@ def flood_for_place(place: str) -> dict:
 
 _reverse: dict = {}
 AREA_KEYS = [("village", "suburb", "quarter", "neighbourhood"),       # kelurahan / desa
-             ("city_district", "district", "municipality"),          # kecamatan
+             ("city_district", "district", "municipality", "suburb"),  # kecamatan (OSM often files it as suburb)
              ("city", "town", "regency", "county"),                  # kota / kabupaten
              ("state",)]
 

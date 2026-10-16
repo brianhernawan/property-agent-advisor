@@ -66,6 +66,8 @@ def property_label(row) -> str:
 def set_pin(lat: float, lon: float, how: str) -> None:
     st.session_state.pin = {"lat": round(float(lat), 6), "lon": round(float(lon), 6), "how": how}
     st.session_state.pop("check", None)          # an old result belongs to the old pin
+    if not how.startswith("listing"):            # a new spot on the map is no longer the listed property,
+        st.session_state.unlink_property = True  # so a damage result must not be saved to it
 
 
 def on_property_change() -> None:
@@ -127,6 +129,8 @@ with s1.form("address_search", clear_on_submit=False, border=False):
             set_pin(hit["lat"], hit["lon"], "address search")
         else:
             st.warning(hit.get("note", "address not found"))
+if st.session_state.pop("unlink_property", False):
+    st.session_state.check_property = NO_PROPERTY
 s2.selectbox("Or start from a listed property", [NO_PROPERTY] + records, key="check_property",
              format_func=lambda r: r if isinstance(r, str) else property_label(r), on_change=on_property_change)
 

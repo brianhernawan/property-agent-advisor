@@ -65,6 +65,11 @@ fr._reverse_fetch = lambda la, lo: {"display_name": "Menteng, Jakarta Pusat, Ind
 fr.clear_cache()
 rv = fr.reverse_geocode(-6.195, 106.832)
 assert rv["status"] == "ok" and rv["area"] == "Menteng, Jakarta Pusat, Daerah Khusus Ibukota Jakarta"
+# kelurahan as village, kecamatan as suburb (how OSM files Kelapa Gading): both kept
+fr._reverse_fetch = lambda la, lo: {"address": {"village": "Kelapa Gading Barat", "suburb": "Kelapa Gading",
+                                               "city": "Jakarta Utara"}}
+fr.clear_cache()
+assert fr.reverse_geocode(-6.16, 106.90)["area"] == "Kelapa Gading Barat, Kelapa Gading, Jakarta Utara"
 fr._reverse_fetch = lambda la, lo: {"error": "Unable to geocode"}
 fr.clear_cache()
 assert fr.reverse_geocode(0.0, 0.0)["status"] == "not_found"
